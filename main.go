@@ -1,130 +1,138 @@
 package main
 
-import "fmt"
-import "os"
+import (
+	"fmt"
+	"toDoList/activator"
+	"toDoList/task"
+	"toDoList/userChoice"
+)
 
 func main() {
-	var tasks []task
+	var tasks []task.Task
 
 	options := []string{
-		"1. Create a new task",
-		"2. List all tasks",
-		"3. Edit task",
+		"1. List all tasks",
+		"2. Add task",
+		"3. Select task",
 		"4. Quit",
 	}
 
-	actions := []func(*[]task){
-		addTask,
+	actions := []func(*[]task.Task){
 		listTasks,
+		addTask,
+		selectTask,
+	}
+
+	var performer userChoice.Performer = &userChoice.ConsolePerformer{Options: options, Activator: &activator.MultiTaskActivator{
+		Tasks: &tasks, Actions: actions,
+	}}
+
+	performer.Perform()
+}
+
+func listTasks(tasks *[]task.Task) {
+	fmt.Printf("Name\t\tDate\tDescription\t\t\tStatus\n")
+	for _, t := range *tasks {
+		t.ConsoleWrite()
+	}
+}
+
+func addTask(tasks *[]task.Task) {
+	*tasks = append(*tasks, task.ConsoleRead())
+}
+
+func selectTask(tasks *[]task.Task) {
+	fmt.Printf("id\tName\t\tDate\tDescription\t\t\tStatus\n")
+	for i, t := range *tasks {
+		fmt.Printf("%d\t", i+1)
+		t.ConsoleWrite()
+	}
+
+	var id int
+	_, err := fmt.Scanf("%d", &id)
+	if err != nil {
+		panic(err)
+	}
+
+	t := findTask(*tasks, id-1)
+
+	options := []string{
+		"1. Edit task",
+		"2. Quit",
+	}
+
+	actions := []func(*task.Task){
 		editTask,
 	}
 
-	performUserChoiceWithListOfTasks(&tasks, options, actions)
+	var performer userChoice.Performer = &userChoice.ConsolePerformer{
+		Options: options,
+		Activator: &activator.SingleTaskActivator{
+			Task: t, Actions: actions,
+		},
+	}
+
+	performer.Perform()
 }
 
-func listTasks(tasks *[]task) {
-	fmt.Printf("Name\t\tDate\tDescription\t\t\tStatus\n")
-	for _, task := range *tasks {
-		fmt.Println(task.name, task.month.String(), task.day, task.year, task.description, task.taskType.String())
+func findTask(tasks []task.Task, id int) *task.Task {
+	if id >= len(tasks) || id < 0 {
+		panic("Task not found")
 	}
+
+	return &tasks[id]
 }
 
-func addTask(tasks *[]task) {
-	fmt.Println("Please enter a task name")
-	var name string
-	_, err := fmt.Fscan(os.Stdin, &name)
-	if err != nil {
-		return
-	}
-
-	fmt.Println("Please enter the deadline date of your task in format dd.mm.yyyy")
-	var date date
-	_, err = fmt.Scanf("%d.%d.%d", &date.day, &date.month, &date.year)
-	if err != nil {
-		return
-	}
-
-	fmt.Println("Please enter a task description")
-	var description string
-	_, err = fmt.Fscan(os.Stdin, &description)
-	if err != nil {
-		return
-	}
-
-	*tasks = append(*tasks, task{name, date, description, PLANNED})
-}
-
-func editTask(tasks *[]task) {
-	correctChoice := false
-	var choice int
-
-	for !correctChoice {
-		for i, task := range *tasks {
-			fmt.Println(i+1, task.name, task.month.String(), task.day, task.description, task.taskType.String())
-		}
-
-		fmt.Println("Please choose a task to edit")
-
-		_, err := fmt.Fscan(os.Stdin, &choice)
-		if err != nil {
-			return
-		}
-
-		if choice-1 >= len(*tasks) || choice-1 < 0 {
-			fmt.Println("Invalid choice: No task with this number exists. Try again.")
-		} else {
-			correctChoice = true
-		}
-	}
-
+func editTask(t *task.Task) {
 	options := []string{
-		"1. Edit name",
-		"2. Edit date",
-		"3. Edit description",
-		"4. Discard task",
-		"5. Exit",
+		"1. Edit task name",
+		"2. Edit task description",
+		"3. Edit task date",
+		"4. Quit",
 	}
 
-	actions := []func(*task){
+	actions := []func(*task.Task){
 		editTaskName,
-		editTaskDate,
 		editTaskDescription,
-		discardTask,
+		editTaskDate,
 	}
 
-	performUserChoiceWithSingleTask(&(*tasks)[choice-1], options, actions)
+	var performer userChoice.Performer = &userChoice.ConsolePerformer{
+		Options: options,
+		Activator: &activator.SingleTaskActivator{
+			Task: t, Actions: actions,
+		},
+	}
+
+	performer.Perform()
 }
 
-func editTaskName(task *task) {
-	fmt.Println("Please enter a task name")
+func editTaskName(t *task.Task) {
+	fmt.Println("Please enter a new name")
 	var name string
-	_, err := fmt.Fscan(os.Stdin, &name)
+	_, err := fmt.Scanf("%s", &name)
 	if err != nil {
-		panic("Error reading task name")
+		panic(err)
 	}
-
-	task.name = name
+	t.Name = name
 }
 
-func editTaskDescription(task *task) {
-	fmt.Println("Please enter a task description")
+func editTaskDescription(t *task.Task) {
+	fmt.Println("Please enter a new description")
 	var description string
-	_, err := fmt.Fscan(os.Stdin, &description)
+	_, err := fmt.Scanf("%s", &description)
 	if err != nil {
-		panic("Error reading task description")
+		panic(err)
 	}
-
-	task.description = description
+	t.Description = description
 }
 
-func editTaskDate(task *task) {
-	fmt.Println("Please enter a task date")
-	_, err := fmt.Scanf("%d.%d.%d", &task.day, &task.month, &task.year)
+func editTaskDate(t *task.Task) {
+	fmt.Println("Please enter a new date in format YYYY-MM-DD")
+	var date task.Date
+	_, err := fmt.Scanf("%d-%d-%d", &date.Year, &date.Month, &date.Day)
 	if err != nil {
-		panic("Error reading task date")
+		panic(err)
 	}
-}
-
-func discardTask(task *task) {
-	task.taskType = DISCARDED
+	t.Date = date
 }

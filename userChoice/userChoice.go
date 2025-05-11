@@ -36,7 +36,6 @@ func (p *ConsolePerformer) Perform() {
 
 		if choice < 1 || choice > exitChoice {
 			fmt.Println("Invalid choice")
-			break
 		}
 
 		if choice != exitChoice {

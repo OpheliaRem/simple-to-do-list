@@ -53,13 +53,13 @@ const (
 func (t taskType) String() string {
 	switch t {
 	case PLANNED:
-		return "PLANNED"
+		return "Planned"
 	case DONE:
-		return "DONE"
+		return "Done"
 	case DISCARDED:
-		return "DISCARDED"
+		return "Discarded"
 	case MISSED:
-		return "MISSED"
+		return "Missed"
 	default:
 		return "UNKNOWN"
 	}
@@ -74,7 +74,7 @@ type Task struct {
 
 func (t *Task) ConsoleWrite() {
 	fmt.Printf(
-		"%s\t%d\t%s\t%d\t%s\t%s\n",
+		"%s\t\t%d %s %d\t\t%s\t\t\t%s\n",
 		t.Name,
 		t.Date.Year,
 		t.Date.Month,

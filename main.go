@@ -14,24 +14,34 @@ func main() {
 		"1. List all tasks",
 		"2. Add task",
 		"3. Select task",
-		"4. Quit",
+		"4. Remove all discarded tasks",
+		"5. Quit",
 	}
 
 	actions := []func(*[]task.Task){
 		listTasks,
 		addTask,
 		selectTask,
+		removeAllDiscardedTasks,
 	}
 
-	var performer userChoice.Performer = &userChoice.ConsolePerformer{Options: options, Activator: &activator.MultiTaskActivator{
-		Tasks: &tasks, Actions: actions,
-	}}
+	var performer userChoice.Performer = &userChoice.ConsolePerformer{
+		Options: options,
+		Activator: &activator.MultiTaskActivator{
+			Tasks:   &tasks,
+			Actions: actions,
+		}}
 
 	performer.Perform()
 }
 
 func listTasks(tasks *[]task.Task) {
-	fmt.Printf("Name\t\tDate\tDescription\t\t\tStatus\n")
+	if len(*tasks) == 0 {
+		fmt.Println("No tasks found")
+		return
+	}
+
+	fmt.Printf("Name\t\tDate\t\t\tDescription\t\t\tStatus\n")
 	for _, t := range *tasks {
 		t.ConsoleWrite()
 	}
@@ -39,9 +49,15 @@ func listTasks(tasks *[]task.Task) {
 
 func addTask(tasks *[]task.Task) {
 	*tasks = append(*tasks, task.ConsoleRead())
+	fmt.Println("The task has been added")
 }
 
 func selectTask(tasks *[]task.Task) {
+	if len(*tasks) == 0 {
+		fmt.Println("No tasks found")
+		return
+	}
+
 	fmt.Printf("id\tName\t\tDate\tDescription\t\t\tStatus\n")
 	for i, t := range *tasks {
 		fmt.Printf("%d\t", i+1)
@@ -57,12 +73,18 @@ func selectTask(tasks *[]task.Task) {
 	t := findTask(*tasks, id-1)
 
 	options := []string{
-		"1. Edit task",
-		"2. Quit",
+		"1. Edit",
+		"2. Mark as done",
+		"3. Discard",
+		"4. Restore (after being discarded)",
+		"5. Quit",
 	}
 
 	actions := []func(*task.Task){
 		editTask,
+		markTaskAsDone,
+		discardTask,
+		restoreTask,
 	}
 
 	var performer userChoice.Performer = &userChoice.ConsolePerformer{
@@ -73,6 +95,57 @@ func selectTask(tasks *[]task.Task) {
 	}
 
 	performer.Perform()
+}
+
+func removeAllDiscardedTasks(tasks *[]task.Task) {
+
+	if len(*tasks) == 0 {
+		fmt.Println("No tasks found")
+		return
+	}
+
+	fmt.Println("This action will delete all discarded tasks. There is no going back. Are you sure? y/n")
+
+	var choice = ""
+
+	for choice != "y" && choice != "n" {
+		_, err := fmt.Scanf("%s", &choice)
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	if choice == "n" {
+		fmt.Println("Cancelled")
+		return
+	}
+
+	var newTasks []task.Task
+
+	for _, t := range *tasks {
+		if t.Type != task.DISCARDED {
+			newTasks = append(newTasks, t)
+		}
+	}
+
+	*tasks = newTasks
+
+	fmt.Println("All discarded tasks were removed")
+}
+
+func markTaskAsDone(t *task.Task) {
+	if t.Type == task.DONE {
+		fmt.Println("Task is already done")
+		return
+	}
+
+	if t.Type == task.DISCARDED {
+		fmt.Println("The task is discarded, so it cannot be marked as done. Restore the task first")
+		return
+	}
+
+	t.Type = task.DONE
+	fmt.Println("Task is marked as done")
 }
 
 func findTask(tasks []task.Task, id int) *task.Task {
@@ -115,6 +188,7 @@ func editTaskName(t *task.Task) {
 		panic(err)
 	}
 	t.Name = name
+	fmt.Println("Name of the task was successfully changed")
 }
 
 func editTaskDescription(t *task.Task) {
@@ -125,6 +199,7 @@ func editTaskDescription(t *task.Task) {
 		panic(err)
 	}
 	t.Description = description
+	fmt.Println("Description of the task was successfully changed")
 }
 
 func editTaskDate(t *task.Task) {
@@ -135,4 +210,20 @@ func editTaskDate(t *task.Task) {
 		panic(err)
 	}
 	t.Date = date
+	fmt.Println("Date of the task was successfully changed")
+}
+
+func discardTask(t *task.Task) {
+	t.Type = task.DISCARDED
+	fmt.Println("The task was successfully discarded")
+}
+
+func restoreTask(t *task.Task) {
+	if t.Type != task.DISCARDED {
+		fmt.Println("The task is present")
+		return
+	}
+
+	t.Type = task.PLANNED
+	fmt.Println("The task was successfully restored")
 }
